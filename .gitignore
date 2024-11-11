@@ -1,2 +1,4 @@
 .env
 LearnGo-todoAuth
+appLogs.txt
+.idea/

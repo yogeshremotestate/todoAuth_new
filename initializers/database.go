@@ -1,22 +1,21 @@
 package initializers
 
 import (
+	"fmt"
 	"log"
-	"os"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
-var DB *gorm.DB
+var DB *sqlx.DB
 
 func ConnectToDB() {
+	dsn := ENV.DB_URL
 	var err error
-	dsn := os.Getenv("DB_URL")
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-
+	DB, err = sqlx.Connect("postgres", dsn)
 	if err != nil {
-		log.Fatal("failed to connect to DB")
+		log.Fatal("Error connecting to the database: ", err)
 	}
-
+	fmt.Println("Database connected successfully")
 }

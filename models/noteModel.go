@@ -1,11 +1,16 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"database/sql"
+	"time"
+)
 
 type Note struct {
-	gorm.Model
-	Title  string
-	Body   string
-	UserID uint `gorm:"index;not null"`
-	User   User `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	ID        uint         `db:"id"`
+	CreatedAt time.Time    `db:"created_at"`
+	UpdatedAt time.Time    `db:"updated_at"`
+	DeletedAt sql.NullTime `db:"deleted_at"` // Optional for soft delete, if needed
+	Title     string       `db:"title"`
+	Body      string       `db:"body"`
+	UserID    uint         `db:"user_id"`
 }

@@ -4,9 +4,7 @@ import (
 	"LearnGo-todoAuth/initializers"
 	"LearnGo-todoAuth/models"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -15,28 +13,27 @@ import (
 )
 
 func Validate(c *gin.Context) {
-
+	log := GetLogger(c.Request.Context())
+	log.Info("Validating User i")
 	bearerToken := c.GetHeader("Authorization")
 
 	if bearerToken == "" {
 		c.AbortWithStatus(http.StatusUnauthorized)
+		log.Warn("Empty token")
 		return
 	}
-
 	text := (strings.Split(bearerToken, " "))
-
-	// println(text[1])
-
 	token, err := jwt.Parse(text[1], func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
-
-		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-		return []byte(os.Getenv("SECRET")), nil
+		return []byte(initializers.ENV.SECRET), nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		c.JSON(http.StatusBadRequest, gin.H{"message": "incorrect token"})
+		log.Warn("incorrect token")
+		return
+
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -45,10 +42,11 @@ func Validate(c *gin.Context) {
 		}
 
 		var user models.User
-		initializers.DB.First(&user, claims["userId"])
-
+		query := "SELECT id,email,password FROM users WHERE id = $1"
+		err = initializers.DB.Get(&user, query, claims["userId"])
 		if user.ID == 0 {
 			c.AbortWithStatus(http.StatusUnauthorized)
+			log.Info("No user found")
 		}
 		c.Set("user", user)
 		c.Next()

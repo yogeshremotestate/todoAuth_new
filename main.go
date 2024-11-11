@@ -4,6 +4,7 @@ import (
 	"LearnGo-todoAuth/controllers"
 	"LearnGo-todoAuth/initializers"
 	"LearnGo-todoAuth/middleware"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,14 +16,25 @@ func init() {
 
 func main() {
 
+	if err := middleware.InitializeLogger(); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer middleware.Logger.Sync()
 	r := gin.Default()
-	r.POST("/notes/", middleware.Validate, controllers.NoteCreate)
-	r.GET("/notes/", middleware.Validate, controllers.GetAllNote)
-	r.GET("/notes/:id", middleware.Validate, controllers.GetNote)
-	r.PUT("/notes/:id", middleware.Validate, controllers.UpdateNote)
-	r.DELETE("/notes/:id", middleware.Validate, controllers.DeleteNote)
+	r.Use(middleware.LoggerMiddleware())
+	noteRoutes := r.Group("/notes", middleware.Validate)
+	{
+		noteRoutes.POST("/", controllers.NoteCreate)
+		noteRoutes.GET("/", controllers.GetAllNote)
+		noteRoutes.GET("/:id", controllers.GetNote)
+		noteRoutes.PUT("/:id", controllers.UpdateNote)
+		noteRoutes.DELETE("/:id", controllers.DeleteNote)
+	}
 
-	r.POST("/user/signup/", controllers.SignUpUser)
-	r.POST("/user/login/", controllers.LoginUser)
+	userRoutes := r.Group("/user")
+	{
+		userRoutes.POST("/signup", controllers.SignUpUser)
+		userRoutes.POST("/login", controllers.LoginUser)
+	}
 	r.Run()
 }

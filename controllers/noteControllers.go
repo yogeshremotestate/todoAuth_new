@@ -1,124 +1,160 @@
 package controllers
 
 import (
+	"LearnGo-todoAuth/handlers"
 	"LearnGo-todoAuth/initializers"
+	"LearnGo-todoAuth/middleware"
 	"LearnGo-todoAuth/models"
+	"database/sql"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 func NoteCreate(c *gin.Context) {
-	// get body
-	var body struct {
-		Title string
-		Body  string
-	}
-	err := c.Bind(&body) // pas the body from request
-
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("NoteCreate is running")
+	var body models.NoteBody
+	err := c.Bind(&body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Please send valid body",
 		})
 		return
 	}
-	user, _ := c.Get("user")
 
-	// create Note
-	post := models.Note{Title: body.Title, Body: body.Body, UserID: user.(models.User).ID}
-	result := initializers.DB.Create(&post)
-
-	if result.Error != nil {
-		c.Status(http.StatusBadGateway)
+	userDetail, _ := c.Get(initializers.UserString)
+	err = handlers.CreateNote(c, body.Title, body.Body, uint(userDetail.(models.User).ID))
+	if err == sql.ErrNoRows {
+		c.JSON(400, gin.H{
+			"error": errors.New("note not found"),
+		})
+		return
+	} else if err != nil {
+		c.JSON(400, gin.H{
+			"error": err,
+		})
 		return
 	}
-
-	//return
 	c.JSON(200, gin.H{
-		"Post": post, // can not return result var as it does not show anything on response
+		"message": "Note addess successfully",
 	})
 }
 
 func GetAllNote(c *gin.Context) {
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("GetAllNote is running")
+	userDetail, _ := c.Get(initializers.UserString)
 
-	// get all Notes
-	var posts []models.Note
-
-	check, _ := c.Get("user")
-
-	initializers.DB.Where("user_id=?", check.(models.User).ID).Preload("User").Find(&posts)
-
-	//return
+	notes, err := handlers.GetAll(c, uint(userDetail.(models.User).ID))
+	if err == sql.ErrNoRows {
+		c.JSON(400, gin.H{
+			"error": errors.New("note not found"),
+		})
+		return
+	}
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err,
+		})
+		return
+	}
 	c.JSON(200, gin.H{
-		"Posts": posts,
+		"Posts": notes,
 	})
 }
 
 func GetNote(c *gin.Context) {
-	//get id
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("GetOne is running")
 	id := c.Param("id")
-	// fmt.Println(id)
-	user, _ := c.Get("user")
+	userDetail, _ := c.Get("user")
 
-	// get all Notes
-	var post models.Note
+	note, err := handlers.GetOne(c, id, uint(userDetail.(models.User).ID))
+	if err == sql.ErrNoRows {
+		c.JSON(400, gin.H{"error": errors.New("note not found")})
+		return
+	}
+	if err != nil {
+		c.JSON(400, gin.H{"error": err})
+		return
+	}
 
-	// initializers.DB.First(&post, id[0].Value)
-	initializers.DB.Where("user_id=?", user.(models.User).ID).Preload("User").First(&post, "id=?", id)
-
-	//return
 	c.JSON(200, gin.H{
-		"Post": post,
+		"Post": note,
 	})
 }
 
 func UpdateNote(c *gin.Context) {
-	// get body and id
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("UpdateNote is running")
 	id := c.Param("id")
 
-	var body struct {
-		Title string
-		Body  string
+	var body models.NoteBody
+	Err := c.Bind(&body)
+	if Err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Please send valid body"})
+		log.Warn("request body is invalid")
+		return
 	}
-	err := c.Bind(&body) // pass the body
+	userDetail, _ := c.Get(initializers.UserString)
 
+	_, err := handlers.GetOne(c, id, uint(userDetail.(models.User).ID))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Please send valid body",
-		})
-		return
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to query note: %v", err)})
+			return
+		}
 	}
-	user, _ := c.Get("user")
 
-	// find and update
-	var post models.Note
-
-	initializers.DB.Where("user_id=?", user.(models.User).ID).Preload("User").First(&post, "id=?", id)
-
-	result := initializers.DB.Model(&post).Updates(models.Note{Title: body.Title, Body: body.Body})
-
-	if result.Error != nil {
-		c.Status(400)
+	result, err := handlers.UpdateOne(c, body.Title, body.Body, id, userDetail.(models.User).ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute update query: %v", err)})
 		return
 	}
 
-	//return
-	c.JSON(200, gin.H{
-		"Post": post, // can not return result var as it does not show anything on response
-	})
+	// Check if the update affected any rows
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to retrieve rows affected: %v", err)})
+		return
+	}
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No rows were updated; check if the note exists with the given id and user_id"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Note Updated successfully"})
+	log.Info("success")
 }
 
 func DeleteNote(c *gin.Context) {
-	//get id
-	id := c.Params
-	// fmt.Println(id)
-	user, _ := c.Get("user")
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("DeleteNote is running")
+	id := c.Param("id")
+	userDetail, _ := c.Get(initializers.UserString)
 
-	// we can first search the note and compare the user id before deleting
+	result, err := handlers.DeleteOne(c, id, userDetail.(models.User).ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute update query: %v", err)})
+		return
+	}
 
-	// for now just doing delete, no check
-	initializers.DB.Where("user_id=?", user.(models.User).ID).Delete(&models.Note{}, id[0].Value)
+	// rows affected check
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to retrieve rows affected: %v", err)})
+		return
+	}
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No rows were updated; check if the note exists with the given id and user_id"})
+		return
+	}
 
-	//return
-	c.Status(200)
+	c.JSON(http.StatusOK, gin.H{"message": "Note deleted successfully"})
 }

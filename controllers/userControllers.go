@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"LearnGo-todoAuth/handlers"
 	"LearnGo-todoAuth/initializers"
+	"LearnGo-todoAuth/middleware"
 	"LearnGo-todoAuth/models"
-	"os"
+	"database/sql"
+	"errors"
 	"time"
 
 	"net/http"
@@ -14,14 +17,11 @@ import (
 )
 
 func SignUpUser(c *gin.Context) {
-	// get body
-	var body struct {
-		Email    string
-		Password string
-	}
-	err := c.Bind(&body) // pas the body from request
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("SignUpUser is running")
 
-	//can apply mutiple checks on password for length and characters but keeping it simple for now
+	var body models.UserBody
+	err := c.Bind(&body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Please send valid body",
@@ -29,11 +29,7 @@ func SignUpUser(c *gin.Context) {
 		return
 	}
 
-	// fmt.Println(&body)
-
-	// hash the password
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
-	// fmt.Println(hash)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error": err,
@@ -41,48 +37,56 @@ func SignUpUser(c *gin.Context) {
 		return
 	}
 
-	user := models.User{Email: body.Email, Password: string(hash)}
-	result := initializers.DB.Create(&user)
-
-	if result.Error != nil {
-		c.JSON(400, result.Error)
+	Err := handlers.CreateUser(c, body.Email, string(hash))
+	if Err == sql.ErrNoRows {
+		c.JSON(400, gin.H{
+			"error": errors.New("note not found"),
+		})
 		return
-	}
-
-	//return
-	c.JSON(200, gin.H{
-		"user": user, // return does not sends the new data
-	})
-}
-
-func LoginUser(c *gin.Context) {
-	var body struct {
-		Email    string
-		Password string
-	}
-
-	c.Bind(&body)
-
-	//user exist check
-	var user models.User
-	initializers.DB.Where("email = ?", body.Email).First(&user)
-
-	if user.ID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": " email does not exist",
+	} else if Err != nil {
+		c.JSON(400, gin.H{
+			"error": err,
 		})
 		return
 	}
 
-	//compare password
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
+	c.JSON(200, gin.H{
+		"user": "User created successfully",
+	})
+}
+
+func LoginUser(c *gin.Context) {
+	log := middleware.GetLogger(c.Request.Context())
+	log.Info("LoginUser is running")
+	var body models.UserBody
+	err := c.Bind(&body)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Please send valid body",
+		})
+		return
+	}
+
+	user, err := handlers.UserExist(c, body.Email)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	} else if user.ID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": " user not found",
+		})
+		return
+	}
+
+	Err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
+	if Err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid password",
 		})
 		return
 	}
-
 	// create JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId": user.ID,
@@ -90,8 +94,7 @@ func LoginUser(c *gin.Context) {
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
-	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
-
+	tokenString, err := token.SignedString([]byte(initializers.ENV.SECRET))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to Generate token ",
@@ -99,12 +102,5 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	// c.SetSameSite(http.SameSiteLaxMode)
-	// c.SetCookie("Authorization", tokenString, 3600, "", "", false, true)
-
-	// Return JWT token in Response
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
-
-	// c.Status(200) // token return in cookie to this should be enough
-
 }
