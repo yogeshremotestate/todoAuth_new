@@ -59,7 +59,7 @@ func GetAllNote(c *gin.Context) {
 	}
 	if err != nil {
 		c.JSON(400, gin.H{
-			"error": err,
+			"error": err.Error(),
 		})
 		return
 	}
@@ -71,9 +71,9 @@ func GetAllNote(c *gin.Context) {
 func GetNote(c *gin.Context) {
 	zap.L().Info("GetOne is running")
 	id := c.Param("id")
-	userDetail, _ := c.Get("user")
+	// userDetail, _ := c.Get("user")
 
-	note, err := handlers.GetOne(c, id, uint(userDetail.(models.User).ID))
+	note, err := handlers.GetOne(c, id)
 	if err == sql.ErrNoRows {
 		zap.L().Info(err.Error())
 		c.JSON(400, gin.H{"error": "note not found"})
@@ -100,9 +100,8 @@ func UpdateNote(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Please send valid body"})
 		return
 	}
-	userDetail, _ := c.Get(initializers.UserString)
 
-	_, err := handlers.GetOne(c, id, uint(userDetail.(models.User).ID))
+	_, err := handlers.GetOne(c, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
@@ -113,7 +112,7 @@ func UpdateNote(c *gin.Context) {
 		}
 	}
 
-	result, err := handlers.UpdateOne(c, body.Title, body.Body, id, userDetail.(models.User).ID)
+	result, err := handlers.UpdateOne(c, body.Title, body.Body, id)
 	if err != nil {
 		zap.L().Info(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute update query: %v", err)})
@@ -139,9 +138,9 @@ func UpdateNote(c *gin.Context) {
 func DeleteNote(c *gin.Context) {
 	zap.L().Info("DeleteNote is running")
 	id := c.Param("id")
-	userDetail, _ := c.Get(initializers.UserString)
+	// userDetail, _ := c.Get(initializers.UserString)
 
-	result, err := handlers.DeleteOne(c, id, userDetail.(models.User).ID)
+	result, err := handlers.DeleteOne(c, id)
 	if err != nil {
 		zap.L().Info(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute update query: %v", err)})

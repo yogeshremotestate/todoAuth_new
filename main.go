@@ -26,10 +26,15 @@ func main() {
 	{
 		noteRoutes.POST("/", controllers.NoteCreate)
 		noteRoutes.GET("/", controllers.GetAllNote)
-		noteRoutes.GET("/:id", controllers.GetNote)
-		noteRoutes.PUT("/:id", controllers.UpdateNote)
-		noteRoutes.DELETE("/:id", controllers.DeleteNote)
 		noteRoutes.POST("/upload", controllers.UploadExcel)
+
+		userSpecific := noteRoutes.Group("/:id", middleware.VerifyUserNote)
+		{
+			userSpecific.GET("/", controllers.GetNote)
+			userSpecific.PUT("/", controllers.UpdateNote)
+			userSpecific.DELETE("/", controllers.DeleteNote)
+		}
+
 	}
 
 	userRoutes := r.Group("/user")

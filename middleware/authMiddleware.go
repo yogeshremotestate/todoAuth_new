@@ -15,7 +15,7 @@ import (
 
 func AuthValidate(c *gin.Context) {
 	// log := GetLogger(c.Request.Context())
-	zap.L().Info("Validating User i")
+	zap.L().Info("Validating User")
 	bearerToken := c.GetHeader("Authorization")
 
 	if bearerToken == "" {
@@ -56,4 +56,33 @@ func AuthValidate(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
+}
+func VerifyUserNote(c *gin.Context) {
+	// log := GetLogger(c.Request.Context())
+	zap.L().Info("verifying Note belongs to user")
+
+	noteId := c.Param("id")
+	userDetail, _ := c.Get("user")
+
+	var note models.Note
+	query := "SELECT id,title,body, created_at,updated_at,user_id FROM notes WHERE id = $1 "
+
+	err := initializers.DB.GetContext(c, &note, query, noteId)
+	if err != nil {
+		zap.L().Info(err.Error(),
+			zap.String("query", query),
+			zap.String("id", noteId),
+		)
+		c.AbortWithStatus(http.StatusBadRequest)
+		zap.L().Warn("query failed at execution")
+		return
+	}
+
+	if note.UserID != uint(userDetail.(models.User).ID) {
+
+		zap.L().Warn("Note does not belongs to user")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Note does not belongs to user"})
+		return
+	}
+
 }

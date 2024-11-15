@@ -64,12 +64,12 @@ func CreateNote(c *gin.Context, title string, body string, userId uint) (err err
 
 func GetAll(c *gin.Context, userId uint) ([]models.Note, error) {
 	var notes []models.Note
-	query := `SELECT id, created_at, updated_at, title, body, user_id
+	query := `SELECT id,title, body,created_at,updated_at, user_id
         FROM notes 
-        WHERE user_id = $1 and deleted_at IS NULL`
+        WHERE user_id = $1 and deleted_at is null`
 	err := initializers.DB.Select(&notes, query, userId)
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		zap.L().Warn(err.Error(),
 			zap.String("query", query),
 			zap.Uint("userId", userId),
 		)
@@ -78,55 +78,49 @@ func GetAll(c *gin.Context, userId uint) ([]models.Note, error) {
 	return notes, err
 }
 
-func GetOne(c *gin.Context, id string, userId uint) (models.Note, error) {
+func GetOne(c *gin.Context, id string) (models.Note, error) {
 	var note models.Note
-	query := "SELECT id,title,body, created_at,updated_at,user_id FROM notes WHERE id = $1 and user_id=$2"
+	query := "SELECT id,title,body, created_at,updated_at,deleted_at,user_id FROM notes WHERE id = $1 and deleted_at is null"
 
-	err := initializers.DB.GetContext(c, &note, query, id, userId)
+	err := initializers.DB.GetContext(c, &note, query, id)
 	fmt.Println(err)
 	if err != nil {
 		zap.L().Warn("Executing SQL query",
 			zap.String("query", query),
 			zap.String("id", id),
-			zap.Uint("userId", userId),
 		)
 	}
-
 	return note, err
 }
 
-func UpdateOne(c *gin.Context, title string, body string, id string, userId int) (sql.Result, error) {
+func UpdateOne(c *gin.Context, title string, body string, id string) (sql.Result, error) {
 	updateQuery := `
         UPDATE notes 
         SET title = $1,body = $2
-        WHERE id = $3 AND user_id = $4`
-	result, err := initializers.DB.Exec(updateQuery, title, body, id, userId)
+        WHERE id = $3`
+	result, err := initializers.DB.Exec(updateQuery, title, body, id)
 	if err != nil {
 		zap.L().Warn("Executing SQL query",
 			zap.String("title", title),
 			zap.String("body", body),
 			zap.String("id", id),
-			zap.Int("userId", userId),
 		)
 	}
-
 	return result, err
 }
 
-func DeleteOne(c *gin.Context, id string, userId int) (sql.Result, error) {
+func DeleteOne(c *gin.Context, id string) (sql.Result, error) {
 	// log := middleware.GetLogger(c.Request.Context())
 	query := `
     UPDATE notes 
     SET deleted_at = $1 
-    WHERE id = $2 AND user_id = $3`
-	result, err := initializers.DB.Exec(query, time.Now(), id, userId)
+    WHERE id = $2 `
+	result, err := initializers.DB.Exec(query, time.Now(), id)
 	if err != nil {
 		zap.L().Warn("Executing SQL query",
 			zap.String("id", id),
-			zap.Int("userId", userId),
 		)
 	}
-
 	return result, err
 }
 func ExcelRead(c *gin.Context, notes []models.Note) error {
