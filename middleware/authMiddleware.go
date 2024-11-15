@@ -10,16 +10,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 )
 
-func Validate(c *gin.Context) {
-	log := GetLogger(c.Request.Context())
-	log.Info("Validating User i")
+func AuthValidate(c *gin.Context) {
+	// log := GetLogger(c.Request.Context())
+	zap.L().Info("Validating User i")
 	bearerToken := c.GetHeader("Authorization")
 
 	if bearerToken == "" {
 		c.AbortWithStatus(http.StatusUnauthorized)
-		log.Warn("Empty token")
+		zap.L().Warn("Empty token")
 		return
 	}
 	text := (strings.Split(bearerToken, " "))
@@ -31,7 +32,7 @@ func Validate(c *gin.Context) {
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "incorrect token"})
-		log.Warn("incorrect token")
+		zap.L().Warn("incorrect token")
 		return
 
 	}
@@ -46,7 +47,7 @@ func Validate(c *gin.Context) {
 		err = initializers.DB.Get(&user, query, claims["userId"])
 		if user.ID == 0 {
 			c.AbortWithStatus(http.StatusUnauthorized)
-			log.Info("No user found")
+			zap.L().Info("No user found")
 		}
 		c.Set("user", user)
 		c.Next()

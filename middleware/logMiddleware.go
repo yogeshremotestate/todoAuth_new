@@ -1,89 +1,93 @@
 package middleware
 
-// logger/logger.go
-
 import (
 	"bytes"
 	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 var Logger *zap.Logger
 
-// InitializeLogger configures the zap logger with JSON encoding and additional options.
+// Init Logger config the zap logger with JSON encoding and additional options
 func InitializeLogger() error {
-	var err error
 	config := zap.NewProductionConfig()
 	config.Encoding = "json"
 	config.OutputPaths = []string{"stdout"}
+	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.RFC3339)
+	config.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
 
-	// Set custom time format
-	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.RFC3339) // Format to ISO 8601 date-time
-	config.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder              // Add short caller path (file and line number)
-
-	// Build the logger with caller info enabled
+	var err error
 	Logger, err = config.Build(zap.AddCaller())
 	if err != nil {
 		return err
 	}
+	zap.ReplaceGlobals(Logger) // zap set global logger
 	return nil
 }
 
+type contextKey string
+
+const loggerKey = contextKey("logger")
+
 // WithLogger returns a context with the logger attached for passing through the application.
-func WithLogger(ctx context.Context) context.Context {
-	return context.WithValue(ctx, "logger", Logger)
+func WithLogger(ctx context.Context, logger *zap.Logger) context.Context {
+	return context.WithValue(ctx, loggerKey, logger)
+
 }
 
-// GetLogger retrieves the logger from the context, or defaults to the global logger.
+// zap logger is set globbally so below funtion is not required but still can be useful for calling zap logger
 func GetLogger(ctx context.Context) *zap.Logger {
-	if ctxLogger, ok := ctx.Value("logger").(*zap.Logger); ok {
-		return ctxLogger
+	logger, _ := ctx.Value(loggerKey).(*zap.Logger)
+	if logger != nil {
+		return logger
 	}
 	return Logger
 }
 
 type ResponseWriter struct {
 	gin.ResponseWriter
-	Body *bytes.Buffer
+	body *bytes.Buffer
+}
+
+func NewResponseWriter(w gin.ResponseWriter) *ResponseWriter {
+	return &ResponseWriter{ResponseWriter: w, body: &bytes.Buffer{}}
 }
 
 // Write overrides the Write method to capture the response body
 func (w *ResponseWriter) Write(b []byte) (int, error) {
-	w.Body.Write(b)                  // Capture the response body
-	return w.ResponseWriter.Write(b) // Write the actual response to the client
+	w.body.Write(b)
+	return w.ResponseWriter.Write(b)
 }
 
 func LoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		body := &bytes.Buffer{}
-		rw := &ResponseWriter{
-			ResponseWriter: c.Writer,
-			Body:           body,
-		}
-		c.Writer = rw
-		// Call the next handler
+		requestID := uuid.New().String()
+		logger := Logger.With(zap.String("request_id", requestID))
+		zap.ReplaceGlobals(logger)
 
 		// Retrieve the logger with the request context
-		// log := GetLogger(c.Request.Context())
-		ctx := WithLogger(c.Request.Context())
+		ctx := WithLogger(c.Request.Context(), logger)
+
 		// Attach the updated context to the request
 		c.Request = c.Request.WithContext(ctx)
 
+		rw := NewResponseWriter(c.Writer)
+		c.Writer = rw
+
 		c.Next()
 
-		log := GetLogger(c.Request.Context())
+		defer zap.ReplaceGlobals(Logger)
 
-		// Log details of the request and response
-		log.Info("API request",
+		zap.L().Info("API request",
 			zap.String("url", c.Request.URL.Path),
 			zap.String("method", c.Request.Method),
-			zap.Int("status", c.Writer.Status()),          // Response status
-			zap.String("response_content", body.String()), // The body of the response (captured in the custom ResponseWriter)
+			zap.Int("status", c.Writer.Status()),
+			zap.String("response_content", rw.body.String()),
 			zap.String("response", c.Writer.Header().Get("Content-Type")),
 		)
 	}

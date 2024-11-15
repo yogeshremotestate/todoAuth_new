@@ -22,13 +22,14 @@ func main() {
 	defer middleware.Logger.Sync()
 	r := gin.Default()
 	r.Use(middleware.LoggerMiddleware())
-	noteRoutes := r.Group("/notes", middleware.Validate)
+	noteRoutes := r.Group("/notes", middleware.AuthValidate)
 	{
 		noteRoutes.POST("/", controllers.NoteCreate)
 		noteRoutes.GET("/", controllers.GetAllNote)
 		noteRoutes.GET("/:id", controllers.GetNote)
 		noteRoutes.PUT("/:id", controllers.UpdateNote)
 		noteRoutes.DELETE("/:id", controllers.DeleteNote)
+		noteRoutes.POST("/upload", controllers.UploadExcel)
 	}
 
 	userRoutes := r.Group("/user")

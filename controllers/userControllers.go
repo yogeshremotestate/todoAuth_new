@@ -3,7 +3,6 @@ package controllers
 import (
 	"LearnGo-todoAuth/handlers"
 	"LearnGo-todoAuth/initializers"
-	"LearnGo-todoAuth/middleware"
 	"LearnGo-todoAuth/models"
 	"database/sql"
 	"errors"
@@ -13,12 +12,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func SignUpUser(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("SignUpUser is running")
+	// log := middleware.GetLogger(c.Request.Context())
+	zap.L().Info("SignUpUser is running")
 
 	var body models.UserBody
 	err := c.Bind(&body)
@@ -56,8 +56,7 @@ func SignUpUser(c *gin.Context) {
 }
 
 func LoginUser(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("LoginUser is running")
+	zap.L().Info("LoginUser is running")
 	var body models.UserBody
 	err := c.Bind(&body)
 	if err != nil {

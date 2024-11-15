@@ -3,19 +3,22 @@ package controllers
 import (
 	"LearnGo-todoAuth/handlers"
 	"LearnGo-todoAuth/initializers"
-	"LearnGo-todoAuth/middleware"
 	"LearnGo-todoAuth/models"
+	"LearnGo-todoAuth/services"
 	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func NoteCreate(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("NoteCreate is running")
+	// log := middleware.GetLogger(c.Request.Context())
+	zap.L().Info("NoteCreate is running")
 	var body models.NoteBody
 	err := c.Bind(&body)
 	if err != nil {
@@ -44,8 +47,7 @@ func NoteCreate(c *gin.Context) {
 }
 
 func GetAllNote(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("GetAllNote is running")
+	zap.L().Info("GetAllNote is running")
 	userDetail, _ := c.Get(initializers.UserString)
 
 	notes, err := handlers.GetAll(c, uint(userDetail.(models.User).ID))
@@ -67,14 +69,14 @@ func GetAllNote(c *gin.Context) {
 }
 
 func GetNote(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("GetOne is running")
+	zap.L().Info("GetOne is running")
 	id := c.Param("id")
 	userDetail, _ := c.Get("user")
 
 	note, err := handlers.GetOne(c, id, uint(userDetail.(models.User).ID))
 	if err == sql.ErrNoRows {
-		c.JSON(400, gin.H{"error": errors.New("note not found")})
+		zap.L().Info(err.Error())
+		c.JSON(400, gin.H{"error": "note not found"})
 		return
 	}
 	if err != nil {
@@ -88,15 +90,14 @@ func GetNote(c *gin.Context) {
 }
 
 func UpdateNote(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("UpdateNote is running")
+	zap.L().Info("UpdateNote is running")
 	id := c.Param("id")
 
 	var body models.NoteBody
 	Err := c.Bind(&body)
 	if Err != nil {
+		zap.L().Info(Err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Please send valid body"})
-		log.Warn("request body is invalid")
 		return
 	}
 	userDetail, _ := c.Get(initializers.UserString)
@@ -114,6 +115,7 @@ func UpdateNote(c *gin.Context) {
 
 	result, err := handlers.UpdateOne(c, body.Title, body.Body, id, userDetail.(models.User).ID)
 	if err != nil {
+		zap.L().Info(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute update query: %v", err)})
 		return
 	}
@@ -121,6 +123,7 @@ func UpdateNote(c *gin.Context) {
 	// Check if the update affected any rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		zap.L().Info(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to retrieve rows affected: %v", err)})
 		return
 	}
@@ -130,17 +133,17 @@ func UpdateNote(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Note Updated successfully"})
-	log.Info("success")
+	zap.L().Info("success")
 }
 
 func DeleteNote(c *gin.Context) {
-	log := middleware.GetLogger(c.Request.Context())
-	log.Info("DeleteNote is running")
+	zap.L().Info("DeleteNote is running")
 	id := c.Param("id")
 	userDetail, _ := c.Get(initializers.UserString)
 
 	result, err := handlers.DeleteOne(c, id, userDetail.(models.User).ID)
 	if err != nil {
+		zap.L().Info(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute update query: %v", err)})
 		return
 	}
@@ -148,6 +151,7 @@ func DeleteNote(c *gin.Context) {
 	// rows affected check
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		zap.L().Info(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to retrieve rows affected: %v", err)})
 		return
 	}
@@ -157,4 +161,38 @@ func DeleteNote(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Note deleted successfully"})
+}
+
+func UploadExcel(c *gin.Context) {
+	zap.L().Info("UploadExcel is running")
+	file, err := c.FormFile("file")
+	if err != nil {
+		zap.L().Info(err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload error"})
+		return
+	}
+
+	filePath := filepath.Join(os.TempDir(), file.Filename)
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		zap.L().Info(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "File save error"})
+		return
+	}
+
+	notes, err := services.ParseNotesFromExcel(c, filePath)
+	if err != nil {
+		zap.L().Info(err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error parsing Excel"})
+		return
+	}
+
+	err = handlers.ExcelRead(c, notes)
+	if err != nil {
+		zap.L().Info(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database insert error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Notes uploaded successfully"})
+
 }
