@@ -5,7 +5,6 @@ import (
 	"LearnGo-todoAuth/initializers"
 	"LearnGo-todoAuth/models"
 	"database/sql"
-	"errors"
 	"time"
 
 	"net/http"
@@ -16,6 +15,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// @Summary      SignUpUser
+// @Description  Register User new account
+// @Tags         user
+// @Accept       json
+// @Produce      json
+// @Param        credentials body models.UserBody true "Signup Credentials"
+// @Success      201 {object} map[string]interface{} "User Created Successfully"
+// @Failure      400 {object} map[string]string "Bad Request"
+// @Failure      409 {object} map[string]string "Conflict - Email Already Exists"
+// @Router       /user/signup [post]
 func SignUpUser(c *gin.Context) {
 	// log := middleware.GetLogger(c.Request.Context())
 	zap.L().Info("SignUpUser is running")
@@ -25,6 +34,14 @@ func SignUpUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Please send valid body",
+		})
+		return
+	}
+
+	user, err := handlers.UserExist(c, body.Email)
+	if user.ID > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": " user email already exist",
 		})
 		return
 	}
@@ -40,12 +57,12 @@ func SignUpUser(c *gin.Context) {
 	Err := handlers.CreateUser(c, body.Email, string(hash))
 	if Err == sql.ErrNoRows {
 		c.JSON(400, gin.H{
-			"error": errors.New("note not found"),
+			"error": "user not created",
 		})
 		return
 	} else if Err != nil {
 		c.JSON(400, gin.H{
-			"error": err,
+			"error": Err.Error(),
 		})
 		return
 	}
@@ -55,6 +72,16 @@ func SignUpUser(c *gin.Context) {
 	})
 }
 
+// @Summary      LoginUser
+// @Description  Authenticate a user and return a token
+// @Tags         user
+// @Accept       json
+// @Produce      json
+// @Param        user body models.UserBody true "Login Credentials"
+// @Success      200 {object} map[string]interface{} "Token"
+// @Failure      400 {object} map[string]string "Bad Request"
+// @Failure      401 {object} map[string]string "Unauthorized"
+// @Router       /user/login [post]
 func LoginUser(c *gin.Context) {
 	zap.L().Info("LoginUser is running")
 	var body models.UserBody
@@ -68,15 +95,17 @@ func LoginUser(c *gin.Context) {
 
 	user, err := handlers.UserExist(c, body.Email)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err,
-		})
-		return
-	} else if user.ID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": " user not found",
-		})
-		return
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": " user not found",
+			})
+			return
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
 	}
 
 	Err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))

@@ -2,13 +2,31 @@ package main
 
 import (
 	"LearnGo-todoAuth/controllers"
+	_ "LearnGo-todoAuth/docs"
 	"LearnGo-todoAuth/initializers"
 	"LearnGo-todoAuth/middleware"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title TODO APIs
+// @version 1.0
+// @description Testing Swagger APIs.
+// @termsOfService http://google.com/
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+// @securityDefinitions.apiKey BearerAuth
+// @in header
+// @name Authorization
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @host localhost:8081
+// @BasePath /api/v1
+// @schemes http
 func init() {
 	initializers.LoadEnvVariables()
 	initializers.ConnectToDB()
@@ -36,6 +54,7 @@ func main() {
 		}
 
 	}
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	userRoutes := r.Group("/user")
 	{

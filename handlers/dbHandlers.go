@@ -4,7 +4,6 @@ import (
 	"LearnGo-todoAuth/initializers"
 	"LearnGo-todoAuth/models"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,11 +20,9 @@ func UserExist(c *gin.Context, email string) (user models.User, err error) {
 			zap.String("query", query),
 			zap.String("userID", email),
 		)
-	}
-	if err == sql.ErrNoRows {
-		return user, errors.New("user not found")
 
 	}
+
 	return user, err
 
 }

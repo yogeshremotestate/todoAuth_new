@@ -16,6 +16,17 @@ import (
 	"go.uber.org/zap"
 )
 
+// @Summary      Create Note
+// @Description  Create a new note for the logged-in user
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param        note body models.NoteBody true "Create Note"
+// @Security     BearerAuth
+// @Success      201 {object} models.Note "Note Created Successfully"
+// @Failure      400 {object} map[string]string "Bad Request"
+// @Failure      401 {object} map[string]string "Unauthorized"
+// @Router       /notes [post]
 func NoteCreate(c *gin.Context) {
 	// log := middleware.GetLogger(c.Request.Context())
 	zap.L().Info("NoteCreate is running")
@@ -46,6 +57,15 @@ func NoteCreate(c *gin.Context) {
 	})
 }
 
+// @Summary      Get All Notes
+// @Description  Retrieve all notes for the logged-in user
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array} models.Note "List of Notes"
+// @Failure      401 {object} map[string]string "Unauthorized"
+// @Router       /notes [get]
 func GetAllNote(c *gin.Context) {
 	zap.L().Info("GetAllNote is running")
 	userDetail, _ := c.Get(initializers.UserString)
@@ -68,6 +88,18 @@ func GetAllNote(c *gin.Context) {
 	})
 }
 
+// @Summary      Get Note
+// @Description  Retrieve a specific note by its ID
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Note ID"
+// @Security     BearerAuth
+// @Success      200 {object} models.Note "Retrieved Note"
+// @Failure      400 {object} map[string]string "Bad Request"
+// @Failure      404 {object} map[string]string "Not Found"
+// @Failure      401 {object} map[string]string "Unauthorized"
+// @Router       /notes/{id} [get]
 func GetNote(c *gin.Context) {
 	zap.L().Info("GetOne is running")
 	id := c.Param("id")
@@ -80,6 +112,7 @@ func GetNote(c *gin.Context) {
 		return
 	}
 	if err != nil {
+		zap.L().Info(err.Error())
 		c.JSON(400, gin.H{"error": err})
 		return
 	}
@@ -89,6 +122,19 @@ func GetNote(c *gin.Context) {
 	})
 }
 
+// @Summary      Update Note
+// @Description  Update an existing note by its ID
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Note ID"
+// @Param        note body models.NoteBody true "Update Note"
+// @Security     BearerAuth
+// @Success      200 {object} models.Note "Note Updated Successfully"
+// @Failure      400 {object} map[string]string "Bad Request"
+// @Failure      404 {object} map[string]string "Not Found"
+// @Failure      401 {object} map[string]string "Unauthorized"
+// @Router       /notes/{id} [put]
 func UpdateNote(c *gin.Context) {
 	zap.L().Info("UpdateNote is running")
 	id := c.Param("id")
@@ -135,6 +181,18 @@ func UpdateNote(c *gin.Context) {
 	zap.L().Info("success")
 }
 
+// @Summary      Delete Note
+// @Description  Delete a specific note by its ID
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Note ID"
+// @Security     BearerAuth
+// @Success      200 {object} map[string]string "Note Deleted Successfully"
+// @Failure      400 {object} map[string]string "Bad Request"
+// @Failure      404 {object} map[string]string "Not Found"
+// @Failure      401 {object} map[string]string "Unauthorized"
+// @Router       /notes/{id} [delete]
 func DeleteNote(c *gin.Context) {
 	zap.L().Info("DeleteNote is running")
 	id := c.Param("id")
