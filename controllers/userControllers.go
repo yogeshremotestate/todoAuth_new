@@ -21,9 +21,7 @@ import (
 // @Accept       json
 // @Produce      json
 // @Param        credentials body models.UserBody true "Signup Credentials"
-// @Success      201 {object} map[string]interface{} "User Created Successfully"
-// @Failure      400 {object} map[string]string "Bad Request"
-// @Failure      409 {object} map[string]string "Conflict - Email Already Exists"
+// @Success      200  "Success"
 // @Router       /user/signup [post]
 func SignUpUser(c *gin.Context) {
 	// log := middleware.GetLogger(c.Request.Context())
@@ -78,9 +76,7 @@ func SignUpUser(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        user body models.UserBody true "Login Credentials"
-// @Success      200 {object} map[string]interface{} "Token"
-// @Failure      400 {object} map[string]string "Bad Request"
-// @Failure      401 {object} map[string]string "Unauthorized"
+// @Success      200  "Success"
 // @Router       /user/login [post]
 func LoginUser(c *gin.Context) {
 	zap.L().Info("LoginUser is running")

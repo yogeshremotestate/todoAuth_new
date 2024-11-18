@@ -39,6 +39,7 @@ func main() {
 	}
 	defer middleware.Logger.Sync()
 	r := gin.Default()
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	r.Use(middleware.LoggerMiddleware())
 	noteRoutes := r.Group("/notes", middleware.AuthValidate)
 	{
@@ -54,7 +55,6 @@ func main() {
 		}
 
 	}
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	userRoutes := r.Group("/user")
 	{

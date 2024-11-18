@@ -55,12 +55,6 @@ paths:
             items:
               $ref: '#/definitions/models.Note'
             type: array
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       security:
       - BearerAuth: []
       summary: Get All Notes
@@ -80,22 +74,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Note Created Successfully
-          schema:
-            $ref: '#/definitions/models.Note'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+        "200":
+          description: Success
       security:
       - BearerAuth: []
       summary: Create Note
@@ -116,29 +96,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Note Deleted Successfully
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+          description: Success
       security:
       - BearerAuth: []
       summary: Delete Note
@@ -161,24 +119,6 @@ paths:
           description: Retrieved Note
           schema:
             $ref: '#/definitions/models.Note'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       security:
       - BearerAuth: []
       summary: Get Note
@@ -204,32 +144,33 @@ paths:
       - application/json
       responses:
         "200":
-          description: Note Updated Successfully
-          schema:
-            $ref: '#/definitions/models.Note'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+          description: Success
       security:
       - BearerAuth: []
       summary: Update Note
       tags:
       - notes
+  /notes/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Allows a logged-in user to upload an Excel file
+      parameters:
+      - description: Excel file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+      security:
+      - BearerAuth: []
+      summary: Upload Excel File
+      tags:
+      - file
   /user/login:
     post:
       consumes:
@@ -246,22 +187,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Token
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+          description: Success
       summary: LoginUser
       tags:
       - user
@@ -280,23 +206,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: User Created Successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: Conflict - Email Already Exists
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+        "200":
+          description: Success
       summary: SignUpUser
       tags:
       - user

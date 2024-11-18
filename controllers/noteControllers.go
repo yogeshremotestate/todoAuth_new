@@ -23,9 +23,7 @@ import (
 // @Produce      json
 // @Param        note body models.NoteBody true "Create Note"
 // @Security     BearerAuth
-// @Success      201 {object} models.Note "Note Created Successfully"
-// @Failure      400 {object} map[string]string "Bad Request"
-// @Failure      401 {object} map[string]string "Unauthorized"
+// @Success      200  "Success"
 // @Router       /notes [post]
 func NoteCreate(c *gin.Context) {
 	// log := middleware.GetLogger(c.Request.Context())
@@ -64,7 +62,6 @@ func NoteCreate(c *gin.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200 {array} models.Note "List of Notes"
-// @Failure      401 {object} map[string]string "Unauthorized"
 // @Router       /notes [get]
 func GetAllNote(c *gin.Context) {
 	zap.L().Info("GetAllNote is running")
@@ -96,9 +93,6 @@ func GetAllNote(c *gin.Context) {
 // @Param        id path int true "Note ID"
 // @Security     BearerAuth
 // @Success      200 {object} models.Note "Retrieved Note"
-// @Failure      400 {object} map[string]string "Bad Request"
-// @Failure      404 {object} map[string]string "Not Found"
-// @Failure      401 {object} map[string]string "Unauthorized"
 // @Router       /notes/{id} [get]
 func GetNote(c *gin.Context) {
 	zap.L().Info("GetOne is running")
@@ -130,10 +124,7 @@ func GetNote(c *gin.Context) {
 // @Param        id path int true "Note ID"
 // @Param        note body models.NoteBody true "Update Note"
 // @Security     BearerAuth
-// @Success      200 {object} models.Note "Note Updated Successfully"
-// @Failure      400 {object} map[string]string "Bad Request"
-// @Failure      404 {object} map[string]string "Not Found"
-// @Failure      401 {object} map[string]string "Unauthorized"
+// @Success      200  "Success"
 // @Router       /notes/{id} [put]
 func UpdateNote(c *gin.Context) {
 	zap.L().Info("UpdateNote is running")
@@ -188,10 +179,7 @@ func UpdateNote(c *gin.Context) {
 // @Produce      json
 // @Param        id path int true "Note ID"
 // @Security     BearerAuth
-// @Success      200 {object} map[string]string "Note Deleted Successfully"
-// @Failure      400 {object} map[string]string "Bad Request"
-// @Failure      404 {object} map[string]string "Not Found"
-// @Failure      401 {object} map[string]string "Unauthorized"
+// @Success      200  "Success"
 // @Router       /notes/{id} [delete]
 func DeleteNote(c *gin.Context) {
 	zap.L().Info("DeleteNote is running")
@@ -220,6 +208,15 @@ func DeleteNote(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Note deleted successfully"})
 }
 
+// @Summary      Upload Excel File
+// @Description  Allows a logged-in user to upload an Excel file
+// @Tags         file
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file formData file true "Excel file to upload"
+// @Success      200 "Success"
+// @Security     BearerAuth
+// @Router       /notes/upload [post]
 func UploadExcel(c *gin.Context) {
 	zap.L().Info("UploadExcel is running")
 	file, err := c.FormFile("file")
