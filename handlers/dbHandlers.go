@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"LearnGo-todoAuth/initializers"
+	Log "LearnGo-todoAuth/log"
 	"LearnGo-todoAuth/models"
 	"database/sql"
 	"fmt"
@@ -12,11 +13,12 @@ import (
 )
 
 func UserExist(c *gin.Context, email string) (user models.User, err error) {
+	log := Log.GetLogger(c)
 	query := "SELECT id,email,password FROM users WHERE email = $1"
 
 	err = initializers.DB.GetContext(c, &user, query, email)
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		log.Warn("Executing SQL query",
 			zap.String("query", query),
 			zap.String("userID", email),
 		)
@@ -28,13 +30,14 @@ func UserExist(c *gin.Context, email string) (user models.User, err error) {
 }
 
 func CreateUser(c *gin.Context, email string, hash string) error {
+	log := Log.GetLogger(c)
 	var user models.User
 	query := `INSERT INTO users ( email, password,created_at,updated_at)
 			  VALUES (TRIM($1), TRIM($2),$3,$4) RETURNING id`
 
 	err := initializers.DB.Get(&user.ID, query, email, hash, time.Now(), time.Now())
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		log.Warn("Executing SQL query",
 			zap.String("query", query),
 			zap.String("userID", email),
 			zap.String("hash", hash),
@@ -44,13 +47,14 @@ func CreateUser(c *gin.Context, email string, hash string) error {
 }
 
 func CreateNote(c *gin.Context, title string, body string, userId uint) (err error) {
+	log := Log.GetLogger(c)
 	var note models.Note
 	query := `INSERT INTO notes ( title, body,user_id,created_at,updated_at)
 			  VALUES ($1, $2,$3,$4,$5) RETURNING id`
 
 	err = initializers.DB.Get(&note.ID, query, title, body, userId, time.Now(), time.Now())
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		log.Warn("Executing SQL query",
 			zap.String("query", query),
 			zap.String("title", title),
 			zap.String("body", body),
@@ -60,13 +64,14 @@ func CreateNote(c *gin.Context, title string, body string, userId uint) (err err
 }
 
 func GetAll(c *gin.Context, userId uint) ([]models.Note, error) {
+	log := Log.GetLogger(c)
 	var notes []models.Note
 	query := `SELECT id,title, body,created_at,updated_at, user_id
         FROM notes 
         WHERE user_id = $1 and deleted_at is null`
 	err := initializers.DB.Select(&notes, query, userId)
 	if err != nil {
-		zap.L().Warn(err.Error(),
+		log.Warn(err.Error(),
 			zap.String("query", query),
 			zap.Uint("userId", userId),
 		)
@@ -76,13 +81,14 @@ func GetAll(c *gin.Context, userId uint) ([]models.Note, error) {
 }
 
 func GetOne(c *gin.Context, id string) (models.Note, error) {
+	log := Log.GetLogger(c)
 	var note models.Note
 	query := "SELECT id,title,body, created_at,updated_at,deleted_at,user_id FROM notes WHERE id = $1 and deleted_at is null"
 
 	err := initializers.DB.GetContext(c, &note, query, id)
 	fmt.Println(err)
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		log.Warn("Executing SQL query",
 			zap.String("query", query),
 			zap.String("id", id),
 		)
@@ -91,13 +97,15 @@ func GetOne(c *gin.Context, id string) (models.Note, error) {
 }
 
 func UpdateOne(c *gin.Context, title string, body string, id string) (sql.Result, error) {
+	log := Log.GetLogger(c)
 	updateQuery := `
         UPDATE notes 
         SET title = $1,body = $2
         WHERE id = $3`
 	result, err := initializers.DB.Exec(updateQuery, title, body, id)
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		log.Warn("Executing SQL query",
+			zap.String("query", updateQuery),
 			zap.String("title", title),
 			zap.String("body", body),
 			zap.String("id", id),
@@ -107,21 +115,22 @@ func UpdateOne(c *gin.Context, title string, body string, id string) (sql.Result
 }
 
 func DeleteOne(c *gin.Context, id string) (sql.Result, error) {
-	// log := middleware.GetLogger(c.Request.Context())
+	log := Log.GetLogger(c)
 	query := `
     UPDATE notes 
     SET deleted_at = $1 
     WHERE id = $2 `
 	result, err := initializers.DB.Exec(query, time.Now(), id)
 	if err != nil {
-		zap.L().Warn("Executing SQL query",
+		log.Warn("Executing SQL query",
 			zap.String("id", id),
+			zap.String("query", query),
 		)
 	}
 	return result, err
 }
 func ExcelRead(c *gin.Context, notes []models.Note) error {
-
+	log := Log.GetLogger(c)
 	tx, err := initializers.DB.Beginx()
 	if err != nil {
 		zap.L().Info(err.Error())
@@ -133,7 +142,7 @@ func ExcelRead(c *gin.Context, notes []models.Note) error {
 		_, err = tx.NamedExec(query, note)
 		if err != nil {
 			tx.Rollback()
-			zap.L().Warn(err.Error(),
+			log.Warn(err.Error(),
 				zap.String("query", query),
 				zap.String("title", note.Title),
 				zap.String("body", note.Body),

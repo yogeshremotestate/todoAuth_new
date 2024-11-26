@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"LearnGo-todoAuth/initializers"
+	Log "LearnGo-todoAuth/log"
 	"LearnGo-todoAuth/models"
 	"fmt"
 	"net/http"
@@ -15,12 +16,13 @@ import (
 
 func AuthValidate(c *gin.Context) {
 	// log := GetLogger(c.Request.Context())
-	zap.L().Info("Validating User")
+	log := Log.GetLogger(c)
+	log.Info("Validating User")
 	bearerToken := c.GetHeader("Authorization")
 
 	if bearerToken == "" {
+		log.Info("Empty token")
 		c.AbortWithStatus(http.StatusUnauthorized)
-		zap.L().Warn("Empty token")
 		return
 	}
 	text := (strings.Split(bearerToken, " "))
@@ -31,8 +33,8 @@ func AuthValidate(c *gin.Context) {
 		return []byte(initializers.ENV.SECRET), nil
 	})
 	if err != nil {
+		log.Info("incorrect token")
 		c.JSON(http.StatusBadRequest, gin.H{"message": "incorrect token"})
-		zap.L().Warn("incorrect token")
 		return
 
 	}
@@ -47,7 +49,7 @@ func AuthValidate(c *gin.Context) {
 		err = initializers.DB.Get(&user, query, claims["userId"])
 		if user.ID == 0 {
 			c.AbortWithStatus(http.StatusUnauthorized)
-			zap.L().Info("No user found")
+			log.Info("No user found")
 		}
 		c.Set("user", user)
 		c.Next()
@@ -59,7 +61,8 @@ func AuthValidate(c *gin.Context) {
 }
 func VerifyUserNote(c *gin.Context) {
 	// log := GetLogger(c.Request.Context())
-	zap.L().Info("verifying Note belongs to user")
+	log := Log.GetLogger(c)
+	log.Info("verifying Note belongs to user")
 
 	noteId := c.Param("id")
 	userDetail, _ := c.Get("user")
@@ -69,18 +72,18 @@ func VerifyUserNote(c *gin.Context) {
 
 	err := initializers.DB.GetContext(c, &note, query, noteId)
 	if err != nil {
-		zap.L().Info(err.Error(),
+		log.Info(err.Error(),
 			zap.String("query", query),
 			zap.String("id", noteId),
 		)
 		c.AbortWithStatus(http.StatusBadRequest)
-		zap.L().Warn("query failed at execution")
+		log.Warn("query failed at execution")
 		return
 	}
 
 	if note.UserID != uint(userDetail.(models.User).ID) {
 
-		zap.L().Warn("Note does not belongs to user")
+		log.Warn("Note does not belongs to user")
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Note does not belongs to user"})
 		return
 	}

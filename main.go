@@ -4,6 +4,7 @@ import (
 	"LearnGo-todoAuth/controllers"
 	_ "LearnGo-todoAuth/docs"
 	"LearnGo-todoAuth/initializers"
+	Log "LearnGo-todoAuth/log"
 	"LearnGo-todoAuth/middleware"
 	"log"
 
@@ -34,13 +35,13 @@ func init() {
 
 func main() {
 
-	if err := middleware.InitializeLogger(); err != nil {
+	if err := Log.InitializeLogger(); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
-	defer middleware.Logger.Sync()
+	// defer middleware.Logger.Sync()
 	r := gin.Default()
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	r.Use(middleware.LoggerMiddleware())
+	r.Use(Log.LoggerMiddleware())
 	noteRoutes := r.Group("/notes", middleware.AuthValidate)
 	{
 		noteRoutes.POST("/", controllers.NoteCreate)
