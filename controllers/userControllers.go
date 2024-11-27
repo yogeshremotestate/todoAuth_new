@@ -38,6 +38,7 @@ func SignUpUser(c *gin.Context) {
 		})
 		return
 	}
+	log.Info("request body", zap.String("email", body.Email))
 
 	user, err := handlers.UserExist(c, body.Email)
 	if user.ID > 0 {

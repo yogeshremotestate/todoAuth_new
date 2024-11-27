@@ -39,6 +39,7 @@ func NoteCreate(c *gin.Context) {
 		})
 		return
 	}
+	log.Info("request Body", zap.String("title", body.Title), zap.String("body", body.Body))
 
 	userDetail, _ := c.Get(initializers.UserString)
 	err = handlers.CreateNote(c, body.Title, body.Body, uint(userDetail.(models.User).ID))
@@ -147,6 +148,7 @@ func UpdateNote(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Please send valid body"})
 		return
 	}
+	log.Info("request Body", zap.String("title", body.Title), zap.String("body", body.Body))
 
 	_, err := handlers.GetOne(c, id)
 	if err != nil {
